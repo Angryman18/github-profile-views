@@ -99,7 +99,7 @@ export async function GET(req, { params }) {
   return new NextResponse(svg, {
     headers: {
       "Content-Type": "image/svg+xml",
-      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Cache-Control": "max-age=0, no-cache, no-store, must-revalidate",
     },
   });
 }
