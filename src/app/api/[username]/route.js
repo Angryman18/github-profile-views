@@ -1,30 +1,47 @@
 import { NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
+import { Redis } from "@upstash/redis";
 
-const countsFile = path.join(process.cwd(), "view_counts.txt");
+// Initialize Redis client
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
 
-// --- Helper: Load counts from file ---
-async function loadCounts() {
+// --- Helper: Get count from Redis ---
+async function getCount(username) {
   try {
-    const data = await fs.readFile(countsFile, "utf-8");
-    const lines = data.split("\n").filter(Boolean);
-    const map = {};
-    for (const line of lines) {
-      const [username, count] = line.split(":");
-      map[username] = parseInt(count, 10) || 0;
-    }
-    return map;
+    const count = await redis.get(`profile_views:${username}`);
+    return count ? parseInt(count, 10) : 0;
   } catch (err) {
-    if (err.code === "ENOENT") return {}; // file not found
-    throw err;
+    console.error("Redis get error:", err);
+    return 0;
   }
 }
 
-// --- Helper: Save counts ---
-async function saveCounts(counts) {
-  const lines = Object.entries(counts).map(([u, c]) => `${u}:${c}`);
-  await fs.writeFile(countsFile, lines.join("\n"), "utf-8");
+// --- Helper: Set count in Redis ---
+async function setCount(username, count) {
+  try {
+    await redis.set(`profile_views:${username}`, count);
+    return true;
+  } catch (err) {
+    console.error("Redis set error:", err);
+    return false;
+  }
+}
+
+// --- Helper: Increment count in Redis ---
+async function incrementCount(username) {
+  try {
+    const newCount = await redis.incr(`profile_views:${username}`);
+    return newCount;
+  } catch (err) {
+    console.error("Redis increment error:", err);
+    // Fallback: get current count and increment manually
+    const currentCount = await getCount(username);
+    const newCount = currentCount + 1;
+    await setCount(username, newCount);
+    return newCount;
+  }
 }
 
 // --- SVG Generator ---
@@ -58,12 +75,12 @@ function generateSVG(count) {
 <!--Counter-->
   <text x="50%" y="75" class="counter" text-anchor="middle" dominant-baseline="middle"> ${countStr}
  </text>
-</svg>`
+</svg>`;
 }
 
 // --- Route Handler ---
 export async function GET(req, { params }) {
-  const { username = "" } = await params ?? {};
+  const { username = "" } = (await params) ?? {};
 
   // validate
   if (!username || username.length > 39) {
@@ -71,16 +88,13 @@ export async function GET(req, { params }) {
   }
 
   // load counts
-  const counts = await loadCounts();
+  const counts = await getCount(username);
 
   // increment
-  counts[username] = (counts[username] || 0) + 1;
-
-  // save
-  await saveCounts(counts);
+  const newCount = await incrementCount(username);
 
   // build svg
-  const svg = generateSVG(counts[username]);
+  const svg = generateSVG(newCount);
 
   return new NextResponse(svg, {
     headers: {

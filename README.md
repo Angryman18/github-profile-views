@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Database Setup Guide
 
-## Getting Started
+This project now uses **Upstash Redis** as a free database for storing GitHub profile view counts.
 
-First, run the development server:
+## Setup Steps
+
+### 1. Create Upstash Account
+
+- Go to [https://console.upstash.com/](https://console.upstash.com/)
+- Sign up for a free account
+- Create a new Redis database
+
+### 2. Get Database Credentials
+
+- In your Upstash console, find your Redis database
+- Copy the `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+- These are your database connection credentials
+
+### 3. Configure Environment Variables
+
+Create a `.env.local` file in your project root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+UPSTASH_REDIS_REST_URL=your_redis_rest_url_here
+UPSTASH_REDIS_REST_TOKEN=your_redis_rest_token_here
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Free Tier Limits
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+- **10,000 requests per day** (perfect for personal projects)
+- **256 MB storage** (more than enough for view counts)
+- **Global edge locations** for fast response times
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How It Works
 
-## Learn More
+- **GET `/api/[username]`**: Increments view count and returns SVG badge
+- **Redis Key Format**: `profile_views:{username}`
+- **Automatic Fallback**: If Redis fails, falls back to manual increment
+- **Error Handling**: Graceful degradation with console logging
 
-To learn more about Next.js, take a look at the following resources:
+## Benefits Over File System
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+✅ **Scalable**: Handles multiple concurrent requests  
+✅ **Reliable**: No file corruption or I/O issues  
+✅ **Fast**: Redis is extremely fast for simple key-value operations  
+✅ **Free**: Generous free tier for personal projects  
+✅ **Global**: Works from any deployment location
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Testing
 
-## Deploy on Vercel
+After setup, test your API:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+curl "http://localhost:3000/api/yourusername"
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This should return an SVG badge with incremented view count.
