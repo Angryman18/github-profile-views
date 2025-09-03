@@ -1,3 +1,9 @@
+# Preview
+
+<img width="270" height="129" alt="image" src="https://github.com/user-attachments/assets/bc2aa4b6-37a0-4cb4-b55f-f83ce35eb9c5" />
+
+## follow the guide to deploy for your own
+
 # Database Setup Guide
 
 This project now uses **Upstash Redis** as a free database for storing GitHub profile view counts.
