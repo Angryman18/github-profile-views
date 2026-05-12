@@ -80,26 +80,31 @@ function generateSVG(count) {
 
 // --- Route Handler ---
 export async function GET(req, { params }) {
-  const { username = "" } = (await params) ?? {};
+  try {
+    const { username = "" } = (await params) ?? {};
 
-  // validate
-  if (!username || username.length > 39) {
-    return NextResponse.json({ error: "Invalid username" }, { status: 400 });
+    // validate
+    if (!username || username.length > 39 || !/^[a-zA-Z]/.test(username)) {
+      return NextResponse.json({ error: "Invalid username" }, { status: 400 });
+    }
+
+    if (username?.toLowerCase() !== process.env.USERNAME?.toLowerCase()) {
+      return NextResponse.json({ error: "Oops! Don't try to hack me" }, { status: 401 });
+    }
+
+    // increment
+    const newCount = await incrementCount(username);
+
+    // build svg
+    const svg = generateSVG(newCount);
+
+    return new NextResponse(svg, {
+      headers: {
+        "Content-Type": "image/svg+xml",
+        "Cache-Control": "max-age=0, no-cache, no-store, must-revalidate",
+      },
+    });
+  } catch (err) {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  // load counts
-  const counts = await getCount(username);
-
-  // increment
-  const newCount = await incrementCount(username);
-
-  // build svg
-  const svg = generateSVG(newCount);
-
-  return new NextResponse(svg, {
-    headers: {
-      "Content-Type": "image/svg+xml",
-      "Cache-Control": "max-age=0, no-cache, no-store, must-revalidate",
-    },
-  });
 }
